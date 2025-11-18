@@ -36,7 +36,7 @@ app.post('/create', (req, res) => {
     try {
         const { role } = req.body;
         if (role && !["admin", "customer"].includes(role)) {
-            return res.status(400).json({ error: "Role hanya boleh admin atau customer" });
+            return res.status(400).json({ error: "Role harus 'admin' atau 'customer'" });
         }
 
         const randomBytes = crypto.randomBytes(32);
@@ -77,12 +77,11 @@ function authMiddleware(req, res, next) {
             return res.status(401).json({ valid: false, message: 'API Key tidak valid' });
         }
 
-        req.apiKeyInfo = results[0]; // simpan info API key, termasuk role
+        req.apiKeyInfo = results[0];
         next();
     });
 }
 
-// --- 6. ROLE MIDDLEWARE ---
 function onlyAdmin(req, res, next) {
     if (req.apiKeyInfo.role !== 'admin') {
         return res.status(403).json({ error: 'Akses hanya untuk admin' });
@@ -97,7 +96,7 @@ function onlyCustomer(req, res, next) {
     next();
 }
 
-// --- 7. ENDPOINT: CHECK API KEY ---
+// --- 6. ENDPOINT: CHECK API KEY STATUS ---
 app.post('/check', (req, res) => {
     const { apiKey } = req.body;
 
@@ -119,7 +118,27 @@ app.post('/check', (req, res) => {
     });
 });
 
-// --- 8. ROUTES TERPROTEKSI ---
+// --- 7. ROUTE: LIST ALL USERS (Admin only) ---
+app.get('/users', authMiddleware, onlyAdmin, (req, res) => {
+    db.query('SELECT id, KeyValue, role FROM api_key', (err, results) => {
+        if (err) {
+            return res.status(500).json({ error: 'Gagal mengambil data user dari DB' });
+        }
+        res.json({ users: results });
+    });
+});
+
+// --- 8. ROUTE: LIST ALL API KEYS ---
+app.get('/apikeys', authMiddleware, onlyAdmin, (req, res) => {
+    db.query('SELECT KeyValue, role, created_at FROM api_key', (err, results) => {
+        if (err) {
+            return res.status(500).json({ error: 'Gagal mengambil daftar API key dari DB' });
+        }
+        res.json({ apikeys: results });
+    });
+});
+
+// --- 9. ROUTES TERPROTEKSI SESUAI ROLE ---
 app.get('/admin-area', authMiddleware, onlyAdmin, (req, res) => {
     res.json({ success: true, message: 'Selamat datang admin!', info: req.apiKeyInfo });
 });
@@ -128,7 +147,7 @@ app.get('/customer-area', authMiddleware, onlyCustomer, (req, res) => {
     res.json({ success: true, message: 'Selamat datang customer!', info: req.apiKeyInfo });
 });
 
-// --- 9. START SERVER ---
+// --- 10. START SERVER ---
 app.listen(port, () => {
     console.log(`Server berjalan di http://localhost:${port}`);
 });
