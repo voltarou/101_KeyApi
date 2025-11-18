@@ -5,13 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Create API Key</title>
     <style>
-        /* --- 1. Pengaturan Global & Latar Belakang (UNGU) --- */
         body, html {
             margin: 0;
             padding: 0;
             height: 100%;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: #2A1B3D; /* Latar belakang ungu sangat gelap */
+            background-color: #2A1B3D;
             color: #FFFFFF;
             display: flex;
             flex-direction: column;
@@ -19,33 +18,21 @@
             align-items: center;
         }
 
-        /* --- 2. Kotak Utama (Kartu) (UNGU) --- */
         .api-card {
-            background-color: #4D3C77; /* Warna ungu kartu yang lebih terang */
+            background-color: #4D3C77;
             padding: 2.5rem;
             border-radius: 16px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
             width: 90%;
             max-width: 500px;
             text-align: center;
-            box-sizing: border-box;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
         }
 
-        h1 {
-            font-size: 2rem;
-            margin-top: 0;
-            margin-bottom: 0.5rem;
-        }
+        h1 { font-size: 2rem; margin-bottom: 0.5rem; }
+        .subtitle { font-size: 0.9rem; color: #D7BDE2; margin-bottom: 2rem; }
 
-        .subtitle {
-            font-size: 0.9rem;
-            color: #D7BDE2; /* Warna lavender muda untuk subjudul */
-            margin-bottom: 2rem;
-        }
-
-        /* --- 3. Tombol "Buat API Key" (UNGU) --- */
         .generate-btn {
-            background-color: #8E44AD; /* Warna ungu cerah (Wisteria) untuk tombol */
+            background-color: #8E44AD;
             color: #FFFFFF;
             font-weight: bold;
             font-size: 1rem;
@@ -57,68 +44,65 @@
             margin-bottom: 1.5rem;
             transition: background-color 0.3s ease;
         }
-        
+
         .generate-btn:disabled {
-            background-color: #4D3C77; /* Warna ungu kartu saat dinonaktifkan */
+            background-color: #4D3C77;
             cursor: wait;
         }
 
         .generate-btn:hover:not(:disabled) {
-            background-color: #9B59B6; /* Warna ungu lebih cerah saat hover */
+            background-color: #9B59B6;
         }
 
-        /* --- 4. Kotak Teks API Key & Tombol Salin (UNGU) --- */
+        label {
+            display: block;
+            width: 100%;
+            font-size: 0.9rem;
+            text-align: left;
+            margin-bottom: 0.5rem;
+            color: #D7BDE2;
+        }
+
+        select, input.api-key-input {
+            width: 100%;
+            background-color: #1E142B;
+            border: 1px solid #4D3C77;
+            color: #F5EEF8;
+            font-size: 0.9rem;
+            border-radius: 8px;
+            padding: 0.8rem;
+            margin-bottom: 1.5rem;
+        }
+
         .key-container {
             position: relative;
             width: 100%;
         }
 
-        .api-key-input {
-            width: 100%;
-            background-color: #1E142B; /* Latar belakang kotak teks yang sangat gelap */
-            border: 1px solid #4D3C77; /* Garis tepi warna ungu kartu */
-            color: #F5EEF8; /* Warna teks kunci (lavender sangat muda) */
-            font-family: 'Courier New', Courier, monospace;
-            font-size: 0.9rem;
-            border-radius: 8px;
-            padding: 1rem;
-            box-sizing: border-box;
-        }
-        
-        /* Modifikasi padding-right untuk input yang ADA tombol salin */
-        .api-key-input.with-copy {
-            padding-right: 70px;
-        }
-
-        .api-key-input.error {
-            color: #F1948A; /* Warna merah muda untuk error */
-            border-color: #E74C3C;
-        }
+        .api-key-input.with-copy { padding-right: 70px; }
 
         .copy-btn {
             position: absolute;
             right: 10px;
             top: 50%;
             transform: translateY(-50%);
-            background-color: #B67DD9; /* Warna lavender cerah untuk tombol "Salin" */
-            color: #1E142B; /* Teks gelap agar kontras */
+            background-color: #B67DD9;
+            color: #1E142B;
             font-weight: bold;
             border: none;
             border-radius: 6px;
             padding: 0.5rem 0.8rem;
             font-size: 0.8rem;
             cursor: pointer;
-            transition: background-color 0.3s ease;
         }
 
         .copy-btn:hover {
-            background-color: #D7A9F3; /* Lavender lebih cerah saat hover */
+            background-color: #D7A9F3;
         }
 
-        /* --- 5. Teks Umpan Balik & Info --- */
         .copy-feedback {
             font-size: 0.8rem;
-            color: #D7BDE2; /* Lavender muda */
+            color: #D7BDE2;
             margin-top: 0.5rem;
             height: 1em;
             visibility: hidden;
@@ -131,19 +115,11 @@
             opacity: 1;
         }
 
-        .info-text {
-            font-size: 0.8rem;
-            color: #D7BDE2; /* Lavender muda */
-            margin-top: 1.5rem;
-            margin-bottom: 0;
-        }
-
-        /* --- 6. Footer --- */
         footer {
             margin-top: auto;
             padding: 2rem;
             font-size: 0.9rem;
-            color: #CAB8D9; /* Warna lavender pudar */
+            color: #CAB8D9;
             text-align: center;
         }
     </style>
@@ -152,10 +128,19 @@
 
     <main class="api-card">
         <h1>Create API Key</h1>
-        <p class="subtitle">Klik tombol di bawah lalu salin kunci yang tampil di kotak teks.</p>
+        <p class="subtitle">Pilih role lalu klik tombol bawah ini untuk membuat API Key.</p>
 
+        <!-- Pilihan Role-->
+        <label for="roleSelect">Pilih Role:</label>
+        <select id="roleSelect">
+            <option value="customer">Customer</option>
+            <option value="admin">Admin</option>
+        </select>
+
+        <!-- Tombol Generate -->
         <button id="generateBtn" class="generate-btn">Buat API Key</button>
 
+        <!-- Teks API Key -->
         <div class="key-container">
             <input type="text" id="apiKeyInput" class="api-key-input with-copy" value="" readonly>
             <button id="copyBtn" class="copy-btn">Salin</button>
@@ -163,87 +148,63 @@
 
         <p id="copyFeedback" class="copy-feedback">sudah di copy di clipboard</p>
 
-        <p class="info-text">Kunci dihasilkan secara aman di sisi server. Simpan di tempat aman.</p>
+        <p class="info-text">Kunci dihasilkan secara aman di server. Simpan dengan aman.</p>
 
-        </main>
+    </main>
 
     <footer>
         Copyright DP
     </footer>
 
     <script>
-        // --- 1. Pilih Elemen ---
         const generateBtn = document.getElementById('generateBtn');
         const copyBtn = document.getElementById('copyBtn');
         const apiKeyInput = document.getElementById('apiKeyInput');
+        const roleSelect = document.getElementById('roleSelect');
         const copyFeedback = document.getElementById('copyFeedback');
-        
-        // --- Elemen Validasi Telah Dihapus ---
 
-
-        // --- 2. Fungsi Buat API Key (Tidak berubah) ---
+        // Fungsi untuk membuat API key bersama role
         async function generateApiKey() {
             generateBtn.disabled = true;
             generateBtn.textContent = 'Membuat...';
             apiKeyInput.value = 'Menghubungi server...';
-            apiKeyInput.classList.remove('error');
 
             try {
                 const response = await fetch('/create', {
-                    method: 'POST'
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ role: roleSelect.value })
                 });
 
-                if (!response.ok) {
-                    throw new Error(`Server merespons dengan status: ${response.status}`);
-                }
-
                 const data = await response.json();
-
                 if (data.apiKey) {
                     apiKeyInput.value = data.apiKey;
                 } else {
-                    throw new Error('Respons server tidak mengandung apiKey');
+                    apiKeyInput.value = 'Gagal membuat API key.';
                 }
-
-            } catch (error) {
-                console.error('Gagal mengambil API key:', error);
-                apiKeyInput.value = 'Gagal mengambil key. Coba lagi.';
-                apiKeyInput.classList.add('error');
+            } catch (err) {
+                apiKeyInput.value = 'Gagal koneksi.';
             } finally {
                 generateBtn.disabled = false;
                 generateBtn.textContent = 'Buat API Key';
             }
         }
 
-        // --- 3. Fungsi Salin (Tidak berubah) ---
+        // Fungsi salin ke clipboard
         function copyToClipboard() {
-            if (apiKeyInput.classList.contains('error') || apiKeyInput.value === '') {
-                return;
-            }
-            
+            if (!apiKeyInput.value) return;
+
             apiKeyInput.select();
             apiKeyInput.setSelectionRange(0, 99999);
-
             navigator.clipboard.writeText(apiKeyInput.value)
                 .then(() => {
                     copyFeedback.classList.add('visible');
-                    setTimeout(() => {
-                        copyFeedback.classList.remove('visible');
-                    }, 2000);
-                })
-                .catch(err => {
-                    console.error('Gagal menyalin: ', err);
+                    setTimeout(() => copyFeedback.classList.remove('visible'), 1500);
                 });
         }
 
-        // --- Fungsi Validasi API Key Telah Dihapus ---
-
-        // --- 4. Tambahkan Event Listener ---
         generateBtn.addEventListener('click', generateApiKey);
         copyBtn.addEventListener('click', copyToClipboard);
-
-        // --- Event Listener Validasi Telah Dihapus ---
-
     </script>
 
 </body>
