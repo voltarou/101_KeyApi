@@ -1,153 +1,155 @@
-const express = require('express');
-const path = require('path');
-const crypto = require('crypto');
-const mysql = require('mysql2');
+// index.js
+const express = require("express");
+const mysql = require("mysql2");
+const crypto = require("crypto");
+const session = require("express-session");
+const path = require("path");
+const bcrypt = require("bcrypt");
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;
 
-// --- 1. CONFIG DATABASE ---
-const db = mysql.createConnection({
-    host: '127.0.0.1',
-    user: 'root',
-    port: 3309,
-    password: 'iVoltarouuu13579',
-    database: 'apikey',
-});
-
-db.connect((err) => {
-    if (err) {
-        console.error('Error connecting to MySQL:', err);
-        return;
-    }
-    console.log('Successfully connected to MySQL database (apikey).');
-});
-
-// --- 2. MIDDLEWARE ---
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.urlencoded({ extended: true }));
+app.use(express.static(path.join(__dirname, "public")));
 
-// --- 3. ROUTE: GET INDEX HTML ---
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+app.use(session({
+  secret: "LEIRA_SECRET_CHANGE_THIS",
+  resave: false,
+  saveUninitialized: true,
+  cookie: { maxAge: 1000 * 60 * 60 } // 1 jam
+}));
+
+// ====== CONFIG DB ======
+const db = mysql.createConnection({
+  host: "127.0.0.1",
+  user: "root",
+  password: "iVoltarouuu13579",
+  port: 3309,
+  database: "apikey"
 });
 
-// --- 4. ENDPOINT: CREATE API KEY + ROLE ---
-app.post('/create', (req, res) => {
-    try {
-        const { role } = req.body;
-        if (role && !["admin", "customer"].includes(role)) {
-            return res.status(400).json({ error: "Role harus 'admin' atau 'customer'" });
-        }
-
-        const randomBytes = crypto.randomBytes(32);
-        const token = randomBytes.toString('base64url');
-        const stamp = Date.now().toString();
-        let apiKey = 'Leira_' + `${token}_${stamp}`;
-
-        const sqlQuery = 'INSERT INTO api_key (KeyValue, role) VALUES (?, ?)';
-        db.query(sqlQuery, [apiKey, role || 'customer'], (err, results) => {
-            if (err) {
-                console.error('Gagal menyimpan API key ke DB:', err);
-                return res.status(500).json({ error: 'Gagal menyimpan key di server' });
-            }
-            console.log('Key baru disimpan ke database:', apiKey);
-            res.status(200).json({ apiKey: apiKey, role: role || 'customer' });
-        });
-
-    } catch (error) {
-        console.error('Gagal membuat API key (crypto error):', error);
-        res.status(500).json({ error: 'Gagal membuat API key di server' });
-    }
+db.connect(err => {
+  if (err) {
+    console.error("DB connection error:", err);
+    process.exit(1);
+  }
+  console.log("DB connected");
 });
 
-// --- 5. MIDDLEWARE: Cek API Key & Role ---
-function authMiddleware(req, res, next) {
-    const apiKey = req.headers['x-api-key'];
-    if (!apiKey) {
-        return res.status(401).json({ error: 'API Key tidak ditemukan dalam header' });
-    }
-
-    db.query('SELECT * FROM api_key WHERE KeyValue = ?', [apiKey], (err, results) => {
-        if (err) {
-            console.error('Gagal memeriksa API Key:', err);
-            return res.status(500).json({ error: 'Gagal memvalidasi key di server' });
-        }
-
-        if (results.length === 0) {
-            return res.status(401).json({ valid: false, message: 'API Key tidak valid' });
-        }
-
-        req.apiKeyInfo = results[0];
-        next();
-    });
+// ====== HELPERS ======
+function requireLogin(req, res, next) {
+  if (!req.session.user) return res.status(401).json({ error: "Not authenticated" });
+  next();
 }
-
-function onlyAdmin(req, res, next) {
-    if (req.apiKeyInfo.role !== 'admin') {
-        return res.status(403).json({ error: 'Akses hanya untuk admin' });
-    }
+function requireRole(role) {
+  return (req, res, next) => {
+    if (!req.session.user) return res.status(401).json({ error: "Not authenticated" });
+    if (req.session.user.role !== role) return res.status(403).json({ error: "Forbidden" });
     next();
+  };
 }
 
-function onlyCustomer(req, res, next) {
-    if (req.apiKeyInfo.role !== 'customer') {
-        return res.status(403).json({ error: 'Akses hanya untuk customer' });
+// ====== ROUTES HTML ======
+app.get("/", (req, res) => res.sendFile(path.join(__dirname, "public", "login.html")));
+app.get("/register", (req, res) => res.sendFile(path.join(__dirname, "public", "register.html")));
+app.get("/login", (req, res) => res.sendFile(path.join(__dirname, "public", "login.html")));
+app.get("/user", (req, res) => res.sendFile(path.join(__dirname, "public", "user.html")));
+app.get("/admin", (req, res) => res.sendFile(path.join(__dirname, "public", "admin.html")));
+
+// ====== API: REGISTER ======
+app.post("/api/register", async (req, res) => {
+  try {
+    const { username, email, password, role } = req.body;
+    if (!username || !password || !email) {
+      return res.status(400).json({ error: "username, email, password required" });
     }
-    next();
-}
-
-// --- 6. ENDPOINT: CHECK API KEY STATUS ---
-app.post('/check', (req, res) => {
-    const { apiKey } = req.body;
-
-    if (!apiKey) {
-        return res.status(400).json({ error: 'API key tidak ada di body' });
-    }
-
-    db.query('SELECT * FROM api_key WHERE KeyValue = ?', [apiKey], (err, results) => {
+    const hashed = await bcrypt.hash(password, 10);
+    db.query("INSERT INTO users (username, email, password, role) VALUES (?,?,?,?)",
+      [username, email, hashed, role === "admin" ? "admin" : "customer"],
+      (err, result) => {
         if (err) {
-            console.error('Gagal mengecek API key:', err);
-            return res.status(500).json({ error: 'Gagal memvalidasi key di server' });
+          if (err.code === "ER_DUP_ENTRY") return res.status(409).json({ error: "Username or email exists" });
+          console.error(err);
+          return res.status(500).json({ error: "DB error" });
         }
+        res.json({ success: true, message: "Registered" });
+      });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "Server error" });
+  }
+});
 
-        if (results.length > 0) {
-            res.status(200).json({ valid: true, message: 'API key valid', role: results[0].role });
-        } else {
-            res.status(401).json({ valid: false, message: 'API key tidak valid' });
-        }
+// ====== API: LOGIN ======
+app.post("/api/login", (req, res) => {
+  const { username, password } = req.body;
+  if (!username || !password) return res.status(400).json({ error: "username & password required" });
+
+  db.query("SELECT id, username, password, role FROM users WHERE username = ? OR email = ?", [username, username], async (err, rows) => {
+    if (err) { console.error(err); return res.status(500).json({ error: "DB error" }); }
+    if (!rows || rows.length === 0) return res.status(401).json({ error: "Invalid credentials" });
+
+    const user = rows[0];
+    const ok = await bcrypt.compare(password, user.password);
+    if (!ok) return res.status(401).json({ error: "Invalid credentials" });
+
+    // set session
+    req.session.user = { id: user.id, username: user.username, role: user.role };
+    res.json({ success: true, role: user.role });
+  });
+});
+
+// ====== API: LOGOUT ======
+app.post("/api/logout", (req, res) => {
+  req.session.destroy(() => res.json({ success: true }));
+});
+
+// ====== API: CREATE/GENERATE API KEY (User only) ======
+app.post("/api/createKey", requireLogin, (req, res) => {
+  // only customers (but admin could also have keys if you want)
+  // here allow customer role only to call from user page
+  const userId = req.session.user.id;
+
+  const token = crypto.randomBytes(32).toString("hex");
+  const apiKey = "Leira_" + token + "_" + Date.now().toString().slice(-6);
+
+  db.query("INSERT INTO api_key (user_id, KeyValue, status) VALUES (?,?,?)",
+    [userId, apiKey, "active"],
+    (err, result) => {
+      if (err) { console.error(err); return res.status(500).json({ error: "DB error" }); }
+      res.json({ success: true, apiKey });
     });
 });
 
-// --- 7. ROUTE: LIST ALL USERS (Admin only) ---
-app.get('/users', authMiddleware, onlyAdmin, (req, res) => {
-    db.query('SELECT id, KeyValue, role FROM api_key', (err, results) => {
-        if (err) {
-            return res.status(500).json({ error: 'Gagal mengambil data user dari DB' });
-        }
-        res.json({ users: results });
+// ====== API: SAVE API KEY METADATA (optional) ======
+// If you want separate endpoint to mark saved/metadata, you can add later
+
+// ====== API: ADMIN - LIST USERS ======
+app.get("/api/admin/users", requireRole("admin"), (req, res) => {
+  db.query("SELECT id, username, email, role, created_at FROM users", (err, rows) => {
+    if (err) { console.error(err); return res.status(500).json({ error: "DB error" }); }
+    res.json({ users: rows });
+  });
+});
+
+// ====== API: ADMIN - LIST API KEYS ======
+app.get("/api/admin/apikeys", requireRole("admin"), (req, res) => {
+  db.query(
+    `SELECT a.id, a.KeyValue, a.status, a.created_at, u.id AS user_id, u.username, u.email
+     FROM api_key a
+     LEFT JOIN users u ON a.user_id = u.id
+     ORDER BY a.created_at DESC`,
+    (err, rows) => {
+      if (err) { console.error(err); return res.status(500).json({ error: "DB error" }); }
+      res.json({ apikeys: rows });
     });
 });
 
-// --- 8. ROUTE: LIST ALL API KEYS ---
-app.get('/apikeys', authMiddleware, onlyAdmin, (req, res) => {
-    db.query('SELECT KeyValue, role, created_at FROM api_key', (err, results) => {
-        if (err) {
-            return res.status(500).json({ error: 'Gagal mengambil daftar API key dari DB' });
-        }
-        res.json({ apikeys: results });
-    });
+// ====== API: GET CURRENT SESSION INFO ======
+app.get("/api/me", (req, res) => {
+  if (!req.session.user) return res.json({ user: null });
+  res.json({ user: req.session.user });
 });
 
-// --- 9. ROUTES TERPROTEKSI SESUAI ROLE ---
-app.get('/admin-area', authMiddleware, onlyAdmin, (req, res) => {
-    res.json({ success: true, message: 'Selamat datang admin!', info: req.apiKeyInfo });
-});
-
-app.get('/customer-area', authMiddleware, onlyCustomer, (req, res) => {
-    res.json({ success: true, message: 'Selamat datang customer!', info: req.apiKeyInfo });
-});
-
-// --- 10. START SERVER ---
-app.listen(port, () => {
-    console.log(`Server berjalan di http://localhost:${port}`);
-});
+// ====== START ======
+app.listen(port, () => console.log(`Server berjalan di http://localhost:${port}`));

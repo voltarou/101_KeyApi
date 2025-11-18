@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Register - API Key Manager</title>
+<style>
+  /* sederhana tema ungu, responsive */
+  body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto;color:#fff;background:#2A1B3D;display:flex;align-items:center;justify-content:center;height:100vh}
+  .card{background:#4D3C77;padding:28px;border-radius:16px;max-width:420px;width:92%;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+  h1{margin:0 0 10px;font-size:24px;text-align:center}
+  label{display:block;margin:10px 0 6px;color:#D7BDE2}
+  input,select{width:100%;padding:10px;border-radius:8px;border:1px solid #3b2b55;background:#22162b;color:#f5eef8}
+  button{margin-top:14px;width:100%;padding:12px;border-radius:10px;border:none;background:#8E44AD;color:#fff;font-weight:700;cursor:pointer}
+  .link{display:block;margin-top:10px;text-align:center;color:#CAB8D9}
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>Register</h1>
+
+    <label>Username</label>
+    <input id="username" placeholder="Username atau nama" />
+
+    <label>Email</label>
+    <input id="email" placeholder="email@example.com" />
+
+    <label>Password</label>
+    <input type="password" id="password" placeholder="Password" />
+
+    <label>Pilih Role</label>
+    <select id="role">
+      <option value="customer">Customer</option>
+      <option value="admin">Admin</option>
+    </select>
+
+    <button id="btnRegister">Daftar</button>
+    <div class="link"><a href="/login" style="color:#D7BDE2;text-decoration:none">Sudah punya akun? Login</a></div>
+    <p id="msg" style="margin-top:8px;color:#F5E1F8"></p>
+  </div>
+
+<script>
+document.getElementById('btnRegister').addEventListener('click', async () => {
+  const username = document.getElementById('username').value.trim();
+  const email = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value;
+  const role = document.getElementById('role').value;
+
+  if (!username || !email || !password) { document.getElementById('msg').innerText='Isi semua field'; return; }
+
+  const res = await fetch('/api/register', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ username, email, password, role })
+  });
+  const j = await res.json();
+  if (res.ok) {
+    document.getElementById('msg').innerText='Register berhasil. Silakan login.';
+    setTimeout(()=> location.href='/login',1200);
+  } else {
+    document.getElementById('msg').innerText = j.error || 'Gagal daftar';
+  }
+});
+</script>
+</body>
+</html>
